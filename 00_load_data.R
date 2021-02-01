@@ -108,6 +108,7 @@ return(Task2)
 }
 
 
+#i tried to make a function to load the info 
 
 loadinfo <- function(loadFile, ParticipantN) {
 info <- read_file(loadFile) %>% 

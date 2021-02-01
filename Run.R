@@ -21,6 +21,7 @@ install.packages("reshape2")
 install.packages("sjstats")
 install.packages("CGPfunctions")
 install.packages("pwr")
+install.packages("ez")
 devtools::install_github("hauselin/hausekeep") 
 devtools::install_github("crsh/papaja")
 devtools::install_github("singmann/afex@master")
@@ -72,6 +73,7 @@ library(dplyr)
 library(sjstats)
 library(CGPfunctions)
 library(pwr)
+library(ez)
 
 #These load the functions that will help load the data and make the plot
 source("00_load_data.R")
@@ -226,33 +228,56 @@ TaskTwoAll <- rbind(TaskTwoAll, Task2)
 #TaskTwo1 <- loadTaskTwo(jatosFile, colourKey, ParticipantN)
 
 
-#Run function that creates a set of plots to give detailed information about a participant's performance
-#Input is a data frame with the following variables:
-#correct          1,0
-#rt               num (ms)
-#blockCount       num
-#trial_index      num
 
-VLLT EINEN CODE UM DOCH NOCHMAL EINZELNE TASKS ZU HABEN 
+#FOR PLOTTING INDIVIDUAL TASK PERFORMANCE
 
-#for (ParticipantN in 1:40){
-(ParticipantN = 16)
+(ParticipantN = 40)
    jatosFile <- paste(fileFolder,files[ParticipantN], sep = "")
    Task1 <- loadTaskOne(jatosFile, ParticipantN)
    colourKey <- createColourKey(Task1)
    Task2 <- loadTaskTwo(jatosFile, colourKey, ParticipantN)
-   info <- loadinfo(jatosFile, PartipantN)
-   Task1 <- cbind(Task1, info)
-   Task2 <- cbind(Task2, info)
+ #  info <- loadinfo(jatosFile, PartipantN)
+ ##  Task1 <- cbind(Task1, info)
+ # Task2 <- cbind(Task2, info)
 
 screenParticipant1(Task1)
 # and save the plot
-ggsave("TaskOne1.png", width = 16, height = 9, units = "in")
+ggsave("TaskOne40.png", width = 16, height = 9, units = "in")
 
 screenParticipant2(Task2)#column blockcount and trialindex  was missing in the load function
 # and save the plot
-ggsave("TaskTwo1.png", width = 16, height = 9, units = "in")
-#}
+ggsave("TaskTwo40.png", width = 16, height = 9, units = "in")
+
+
+# for some, it doesnt work because there are no NAs so again with another function that leaves out NA in task 22222
+(ParticipantN = 40)
+jatosFile <- paste(fileFolder,files[ParticipantN], sep = "")
+Task1 <- loadTaskOne(jatosFile, ParticipantN)
+colourKey <- createColourKey(Task1)
+Task2 <- loadTaskTwo(jatosFile, colourKey, ParticipantN)
+
+
+screenParticipant1(Task1)
+ggsave("TaskOne40.png", width = 16, height = 9, units = "in")
+
+screenParticipant3(Task2)
+ggsave("TaskTwo40.png", width = 16, height = 9, units = "in")
+
+
+# for some, it doesnt work because there are no NAs so again with another function that leaves out NA in task 11111
+(ParticipantN = 40)
+jatosFile <- paste(fileFolder,files[ParticipantN], sep = "")
+Task1 <- loadTaskOne(jatosFile, ParticipantN)
+colourKey <- createColourKey(Task1)
+Task2 <- loadTaskTwo(jatosFile, colourKey, ParticipantN)
+
+
+screenParticipant4(Task1)
+ggsave("TaskOne40.png", width = 16, height = 9, units = "in")
+
+screenParticipant2(Task2)
+ggsave("TaskTwo40.png", width = 16, height = 9, units = "in")
+
 
 #######
 
@@ -293,7 +318,7 @@ ggsave("histogram_rt_filtered.png", width = 16, height = 9, units = "in")
 TaskTwoAllnew$Age <- as.integer(TaskTwoAllnew$Age)
 
 descriptivesrt <- TaskTwoAllnew %>% group_by(valueCondition) %>%
-#  filter(correct>0)%>%
+  filter(correct>0)%>%
 #  filter(blockCount<2)%>%
    summarize(
       Mean = mean(rt_clean)
@@ -306,7 +331,7 @@ descriptivesrt[, -1] <- printnum(descriptivesrt[, -1])
 
 descriptivesrt2 <- TaskTwoAllnew %>% group_by(valueCondition) %>%
      filter(correct>0)%>%
-     filter(blockCount<2)%>%
+     filter(blockCount<1)%>%
    summarize(
       Mean = mean(rt_clean)
       , Median = median(rt_clean)
@@ -332,7 +357,7 @@ descriptivesacc[, -1] <- printnum(descriptivesacc[, -1])
 
 descriptivesacc2 <- TaskTwoAllnew %>% group_by(valueCondition) %>%
 
-  filter(blockCount<2)%>%
+  filter(blockCount<1)%>%
    summarize(
       Mean = mean(correct)
       , Median = median(correct)
@@ -421,9 +446,6 @@ anovazeugrt <- aggregate(rt_clean ~ PID + valueCondition,
                     data = TaskTwoAllnewRT1,
                     FUN = mean)
 
-view(anovazeugrt)
-
-
 anovazeugrt$PID <- factor(anovazeugrt$PID)
 anovazeugrt$valueCondition <- factor(anovazeugrt$valueCondition)
 
@@ -431,8 +453,11 @@ anovazeugrt$valueCondition <- factor(anovazeugrt$valueCondition)
 anovart<- aov(rt_clean ~ valueCondition+Error(PID/valueCondition), data=anovazeugrt)
 summary(anovart)
 
+#FOR APATABLE
 
-
+options(contrasts = c("contr.helmert", "contr.poly"))
+output <- aov(rt_clean~valueCondition, data = TaskTwoAllnewRT1)
+apa.aov.table(output, filename = "anova_tableRT.doc")
 
 #only first 2 bocks anova (not sig as well but... more....)
 
@@ -495,6 +520,12 @@ anovazeugacc$valueCondition <- factor(anovazeugacc$valueCondition)
 
 anovaacc <- aov(correct~valueCondition+Error(PID/valueCondition), data=anovazeugacc)
 summary(anovaacc)
+
+
+options(contrasts = c("contr.helmert", "contr.poly"))
+output <- aov(correct~valueCondition, data = TaskTwoAllnewRT)
+apa.aov.table(output, filename = "anova_tableacc.doc")
+
 
 
 TaskTwoAllnewacc2 <- replace_with_na_at(TaskTwoAllnew, "blockCount", ~.x > 1)
@@ -654,7 +685,10 @@ pwc <- anovazeugrtblocks %>%
    )
 view(pwc)
 
-get_anova_table(anovablocksrt)
+####### 
+
+
+
 #anovablocksinteraction <- apa.2way.table(
  #  valueCondition,
  #  blockCount,
@@ -682,6 +716,15 @@ anovablocksacc <- aov(correct~valueCondition*blockCount+
                         Error(PID/(valueCondition*blockCount)),
                      data=anovazeugaccblocks)
 summary(anovablocksacc)
+
+
+pwc2 <- anovazeugaccblocks %>%
+   pairwise_t_test(
+      correct ~ blockCount, paired = FALSE,
+      p.adjust.method = "bonferroni"
+   )
+view(pwc2)
+
 # ERROR MODELL IST SINGULÄR?
 
 #hier without interaction (for theother plot also)
@@ -699,6 +742,10 @@ anovazeugrtblocks1$blockCount<- factor(anovazeugrtblocks1$blockCount)
 anovartblocks1<- aov(rt_clean ~ blockCount+Error(PID/blockCount), data=anovazeugrtblocks1)
 summary(anovartblocks1)
 
+#apa table
+options(contrasts = c("contr.helmert", "contr.poly"))
+output <- aov(rt_clean~blockCount, data = TaskTwoAllnewRT)
+apa.aov.table(output, filename = "1wayanovablocks.doc")
 
 
 ggplot(anovazeugrtblocks1, aes(x = blockCount, y = rt_clean)) +
@@ -766,9 +813,6 @@ ggsave("blockaveragert.png", width = 16, height = 9, units = "in")
 
 
 
-
-
-
 ggplot(anovazeugrtblocks1, aes(x = blockCount, y = rt_clean)) +
    geom_boxplot() +
    stat_boxplot(geom="errorbar", width=0.2) +
@@ -830,6 +874,12 @@ anovadistract <- aov(rt_clean~valueCondition*Distractability+
                    data=anovazeugdistract)
 summary(anovadistract)
 
+#apa table
+options(contrasts = c("contr.helmert", "contr.poly"))
+output <- aov(rt_clean~valueCondition*Distractability, data = TaskTwoAllnewRT1)
+apa.aov.table(output, filename = "2wayanovadistractability.doc")
+##############################test
+
 
 mns <- tapply(anovazeugdistract$rt_clean,
               list(anovazeugdistract$valueCondition, anovazeugdistract$Distractability), mean)
@@ -853,10 +903,6 @@ hist(TaskTwoAllnewRT1$rt_clean, breaks = seq(floor(min(TaskTwoAllnewRT1$rt_clean
      main="Distribution of Reaction times", xlab="Reaction time [ms]")
 
 #another version
-
-
-
-
 
 
 
@@ -903,9 +949,10 @@ tdata$PID <- factor(tdata$PID)
 tdata$LossOrReward<- factor(tdata$LossOrReward)
 
 t.test(rtCosts ~ LossOrReward, data = tdata,
-       alternative = "greater", paired = T)  #not sure if greater or smth else
+       alternative = "two.sided", paired = T)  #not sure if greater or smth else
 
-#plot  KOMISCH DENN REWARD HAT SOGAR NEG VALUE ALSO VEREINFACHT?
+
+#plot  
 
 
 ggplot(tdata, aes(x = LossOrReward, y = rtCosts)) +
@@ -928,23 +975,50 @@ TaskTwoAllnewRT1 <- TaskTwoAllnewRT1%>%
 
 TaskTwoAllnewRT1$valuepoints <-as.integer(TaskTwoAllnewRT1$valuepoints)
 TaskTwoAllnewRT1$rt_clean <-as.integer(TaskTwoAllnewRT1$rt_clean)
+#with means?
+
+trendcheck <- aggregate(rt_clean ~ valuepoints,
+                               data = TaskTwoAllnewRT1,
+                               FUN = mean)
 
 #linearity teast OK ICH KRIEGE NICHT GEPLOTTET; OBJEKT IS NOT FOUND: 
 
 fit <- lm(valuepoints ~ rt_clean, TaskTwoAllnewRT1)
 summary(fit)
+
 fit <- lm(valuepoints ~ log(rt_clean), TaskTwoAllnewRT1)
 summary(fit)
+
+#with means
+fit <- lm(valuepoints ~ log(rt_clean), trendcheck)
+summary(fit)
+
+plot(fit, log="", main = "Logarithmic regression (b > 0)") #?????
+
 
 install.packages("plotfunctions")
 library(plotfunctions)
 
-TaskTwoAllnewRT1%>%
-plot(valuepoints, rt_clean, pch=19)
-smoothScatter(valuepoints, rt_clean)
+ggplot(aes(x=valuepoints,y=rt_clean),data=trendcheck)+
+   geom_point()+
+   geom_line()+
+   xlab("Condition (in value points)") + ylab(" mean RT [ms]") +
+   theme_apa()
+ggsave("linearityplot.png",width = 16, height = 9, units = "in")
+
+ggplot(aes(x=valuepoints,y=rt_clean),data=trendcheck)+
+   geom_point()+
+   geom_line()+
+   geom_smooth(method=lm)+
+   xlab("Condition (in value points)") + ylab(" mean RT [ms]") +
+   theme_apa()
+ggsave("linearityplot2.png",width = 16, height = 9, units = "in")
+
+
 
 typeof("valuepoints")
 as.integer("valuepoints")
+
 
 ggplot(TaskTwoAllnewRT1, aes(valuepoints, averages)) +
    geom_point() + 
@@ -952,14 +1026,10 @@ ggplot(TaskTwoAllnewRT1, aes(valuepoints, averages)) +
    theme_apa()
 ggsave("linearity.png",width = 16, height = 9, units = "in")
 
-TaskTwoAllnewRT1%>%
-as.integer(valuepoints)
-logEstimate = lm(rt_clean ~ log(valuepoints))
 
 
 
-
-#gender anova DOES NOT FUNCTION ERORR MODEL IS SUNGULAR ok i do not put the between factor (sex) in the error term
+#gender anova 
 
 
 anovazeuggender <- aggregate(rt_clean ~ PID + valueCondition + Sex,
@@ -976,9 +1046,9 @@ anovagender <- aov(rt_clean~valueCondition*Sex+
 summary(anovagender)
 
 
-#nochmachen
+#fürgender noch???
 
-ggplot(tdata, aes(x = LossOrReward, y = rtCosts)) +
+ggplot(tdata, aes(x = LossOrReward, y = Sex)) +
    geom_boxplot() +
    stat_boxplot(geom="errorbar", width=0.2) +
    geom_point(aes(colour = factor(LossOrReward))) + 
@@ -1002,7 +1072,9 @@ anovagender2 <- aov(rtCosts~LossOrReward*Sex+
                       Error(PID/LossOrReward),
                    data=anovazeuggender2)
 summary(anovagender2)
-view(anovazeuggender2)
+
+#no need for a ost hoc test
+
 
 Plot2WayANOVA(rtCosts~LossOrReward*Sex,
               dataframe = anovazeuggender2,
@@ -1034,7 +1106,7 @@ Plot2WayANOVA(rtCosts~LossOrReward*Sex,
             ggsave("intwractionsex.png", width = 16, height = 9, units = "in")
 
             
-            descriptivesgender <- TaskTwoAllnewRT1 %>% group_by(LossOrReward, Sex) %>%
+            descriptivesrtgender <- TaskTwoAllnewRT1 %>% group_by(LossOrReward, Sex) %>%
                #  filter(correct>0)%>%
                #  filter(blockCount<2)%>%
                summarize(
@@ -1046,7 +1118,23 @@ Plot2WayANOVA(rtCosts~LossOrReward*Sex,
                )
             descriptivesrtgender[, -1] <- printnum(descriptivesrtgender[, -1])
             
-
+            #apa table
+            options(contrasts = c("contr.helmert", "contr.poly"))
+            output <- aov(rtCosts~LossOrReward*Sex, data = TaskTwoAllnewRT1)
+            apa.aov.table(output, filename = "2wayanovadsexcosts.doc")
+            
+  #ok the descrrpitive data i guess...          
+            apa.2way.table(
+               Sex,
+               LossOrReward,
+               rtCosts,
+               anovazeuggender2,
+               filename = "aptable.doc",
+               table.number = NA,
+               show.conf.interval = FALSE,
+               show.marginal.means = FALSE,
+               landscape = TRUE
+            )
  #distractabltiy           
             
             
@@ -1064,6 +1152,13 @@ Plot2WayANOVA(rtCosts~LossOrReward*Sex,
             summary(anovadistract2)
             
             
+            
+            pwc <- anovadistract2 %>%
+               pairwise_t_test(
+                  rt_clean ~ blockCount, paired = FALSE,
+                  p.adjust.method = "bonferroni"
+               )
+            view(pwc)  
             
 Plot2WayANOVA(rtCosts~LossOrReward*Distractability,
                           dataframe = anovazeugdistract2,
@@ -1094,13 +1189,19 @@ Plot2WayANOVA(rtCosts~LossOrReward*Distractability,
                           ggplot.component = theme_apa())
             ggsave("intwractiondistract.png", width = 16, height = 9, units = "in")
             
-#correlation
+            apa.2way.table(
+               Distractability,
+               LossOrReward,
+               rtCosts,
+               anovazeugdistract2,
+               filename = "aptable2.doc",
+               table.number = NA,
+               show.conf.interval = FALSE,
+               show.marginal.means = FALSE,
+               landscape = TRUE)
+ 
 
-cor(x, y, method = c("pearson", "kendall", "spearman"))
-
-
-
-
+writeClipboard(as.character(descriptivesrtgender))
 writeClipboard(as.character(descriptivesrt))
-
+writeClipboard(as.character(descriptivesacc))
 writeClipboard(as.character(descriptivesrt2))
