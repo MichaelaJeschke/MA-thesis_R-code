@@ -1,3 +1,8 @@
+
+#checking and setting the working directory
+getwd()
+setwd("C:/Users/michi/Desktop/RRR/MA/converted_data/")
+
 #installing all the necessary packages
 install.packages("tidyverse")
 install.packages("patchwork")
@@ -26,15 +31,9 @@ devtools::install_github("hauselin/hausekeep")
 devtools::install_github("crsh/papaja")
 devtools::install_github("singmann/afex@master")
 packageVersion("afex")
-
 if(!require(installr)) {
   install.packages("installr"); require(installr)} 
 updateR()
-
-#checking and setting the working directory
-getwd()
-setwd("C:/Users/michi/Desktop/RRR/MA/converted_data/")
-
 
 
 #for all the data manipulation/filtering/variable creation/plotting as well as for help loading data
@@ -62,7 +61,7 @@ library(naniar)
 library(apaTables)
 #for anova
 library(afex)
-#also
+#some more
 library(lsmeans)
 library(emmeans)
 library(hrbrthemes)
@@ -79,8 +78,7 @@ library(ez)
 source("00_load_data.R")
 source("01_plot_data.R")
 
-
-
+# folder info
 fileFolder = "C:/Users/michi/Desktop/RRR/MA/converted_data/datafiles/"
 files = "datafiles"
 files = list.files("C:/Users/michi/Desktop/RRR/MA/converted_data/datafiles/")
@@ -90,7 +88,7 @@ for (ParticipantN in 1:45){
   bonusEuros = bonusEurosEarned(jatosFile, ParticipantN)
   print(bonusEuros)}
 
-#original data owthout ANY filtering except for rt >1800
+#original data without ANY filtering except for rt >1800
 (ParticipantN =1)
 jatosFile <- paste(fileFolder,files[ParticipantN], sep = "")
 
@@ -107,7 +105,6 @@ task2.1 <-  Task2
 TaskOneAll <- task1.1
 TaskTwoAll <- task2.1
 
-
 for (ParticipantN in 2:40){
    jatosFile <- paste(fileFolder,files[ParticipantN], sep = "")
    Task1 <- loadTaskOne(jatosFile, ParticipantN)
@@ -120,6 +117,27 @@ for (ParticipantN in 2:40){
    TaskOneAll <- rbind(TaskOneAll, Task1)
    TaskTwoAll <- rbind(TaskTwoAll, Task2)
 }
+
+# sample info
+descriptivesample <- select(TaskTwoAll, PID, Age, Sex, hand)
+descriptivesample <-descriptivesample[-c(1)]
+descriptivesample <- distinct(descriptivesample, PID, .keep_all = TRUE)
+descriptivesample <-descriptivesample[-c(1)]
+
+summary(descriptivesample)
+
+descriptivesdemo <- descriptivesample %>% 
+   summarize(
+      Mean = mean(Age)
+      , Median = median(Age)
+      , SD = sd(Age)
+      , Min = min(Age)
+      , Max = max(Age)
+   )
+
+table(descriptivesample$Sex)[names(table(descriptivesample$Sex)) == "Weiblich"] 
+table(descriptivesample$hand)[names(table(descriptivesample$hand)) == "Linkshänder"] 
+
 
  
 TaskTwoAll <- TaskTwoAll%>%
@@ -213,8 +231,6 @@ for (ParticipantN in 2:40){
 TaskOneAll <- rbind(TaskOneAll, Task1)
 TaskTwoAll <- rbind(TaskTwoAll, Task2)
 }
-
-
 
 #info <- loadinfo(jatosFile, PartipantN)
 #(ParticipantN =1)
@@ -367,25 +383,6 @@ descriptivesacc2 <- TaskTwoAllnew %>% group_by(valueCondition) %>%
    )
 descriptivesacc2[, -1] <- printnum(descriptivesacc2[, -1])
 
-descriptivesample <- select(TaskTwoAllnew, PID, Age, Sex, hand)
-descriptivesample <-descriptivesample[-c(1)]
-descriptivesample <- distinct(descriptivesample, PID, .keep_all = TRUE)
-descriptivesample <-descriptivesample[-c(1)]
-
-summary(descriptivesample)
-
-descriptivesdemo <- descriptivesample %>% 
-   summarize(
-      Mean = mean(Age)
-      , Median = median(Age)
-      , SD = sd(Age)
-      , Min = min(Age)
-      , Max = max(Age)
-   )
-
-table(descriptivesample$Sex)[names(table(descriptivesample$Sex)) == "Weiblich"] 
-table(descriptivesample$hand)[names(table(descriptivesample$hand)) == "Linkshänder"] 
-
 
 #jusst looking
 meanRTbyCondTask1 <- TaskOneAll%>%
@@ -521,7 +518,7 @@ anovazeugacc$valueCondition <- factor(anovazeugacc$valueCondition)
 anovaacc <- aov(correct~valueCondition+Error(PID/valueCondition), data=anovazeugacc)
 summary(anovaacc)
 
-
+# table doesn not work 
 options(contrasts = c("contr.helmert", "contr.poly"))
 output <- aov(correct~valueCondition, data = TaskTwoAllnewRT)
 apa.aov.table(output, filename = "anova_tableacc.doc")
@@ -1153,12 +1150,11 @@ Plot2WayANOVA(rtCosts~LossOrReward*Sex,
             
             
             
-            pwc <- anovadistract2 %>%
-               pairwise_t_test(
-                  rt_clean ~ blockCount, paired = FALSE,
-                  p.adjust.method = "bonferroni"
-               )
-            view(pwc)  
+            options(contrasts = c("contr.helmert", "contr.poly"))
+            output <- aov(rtCosts~ PID + valueCondition + Distractability, data = TaskTwoAllnewRT1)
+            apa.aov.table(output, filename = "anova_distract_costs2.doc")
+            
+            
             
 Plot2WayANOVA(rtCosts~LossOrReward*Distractability,
                           dataframe = anovazeugdistract2,
