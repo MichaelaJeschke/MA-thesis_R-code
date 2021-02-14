@@ -25,6 +25,8 @@ install.packages("viridis")
 install.packages("reshape2")
 install.packages("sjstats")
 install.packages("CGPfunctions")
+install.packages("spatialEco")
+install.packages("plotfunctions")
 install.packages("pwr")
 install.packages("ez")
 devtools::install_github("hauselin/hausekeep") 
@@ -35,7 +37,8 @@ if(!require(installr)) {
   install.packages("installr"); require(installr)} 
 updateR()
 
-
+library(plotfunctions)
+library(spatialEco)
 #for all the data manipulation/filtering/variable creation/plotting as well as for help loading data
 library(tidyverse)
 #package for combining the plots together into one image
@@ -120,11 +123,13 @@ for (ParticipantN in 2:40){
 
 # sample info
 descriptivesample <- select(TaskTwoAll, PID, Age, Sex, hand)
-descriptivesample <-descriptivesample[-c(1)]
+#descriptivesample <-descriptivesample[-c(1)]
 descriptivesample <- distinct(descriptivesample, PID, .keep_all = TRUE)
 descriptivesample <-descriptivesample[-c(1)]
 
 summary(descriptivesample)
+
+TaskTwoAll$Age <- as.integer(TaskTwoAll$Age)
 
 descriptivesdemo <- descriptivesample %>% 
    summarize(
@@ -138,33 +143,35 @@ descriptivesdemo <- descriptivesample %>%
 table(descriptivesample$Sex)[names(table(descriptivesample$Sex)) == "Weiblich"] 
 table(descriptivesample$hand)[names(table(descriptivesample$hand)) == "Linkshänder"] 
 
-
+#minimum filtering (no non response trials)
  
 TaskTwoAll <- TaskTwoAll%>%
    mutate(PID= ifelse(rt>1790,NA,PID))
 TaskTwoAll <- na.omit(TaskTwoAll)
-#one boxplot and histogram for orignial data
+
+#one boxplot and histogram for original data
 
 ggplot(TaskTwoAll, aes(x=valueCondition, y=rt, fill=valueCondition)) + 
    geom_boxplot(alpha=0.3) +
-   stat_boxplot(geom="errorbar", width=0.2) +
-   geom_point(aes(colour = factor(valueCondition))) + 
-   xlab("Condition") + ylab("Mean RT [ms]") +
+   stat_boxplot(geom="errorbar", width=0.3) +
+   geom_point(size = 0.1) + 
+   xlab("Condition") + ylab("Reaction times [ms]") +
    ylim(100, 1800) +
    theme_apa() +
    theme(legend.position="none") +
    scale_fill_brewer(palette="BuPu")
-ggsave("boxplot_rt_originaln.png", width = 16, height = 9, units = "in")
+ggsave("boxplot_rt_original.png", width = 16, height = 9, units = "in")
 
 ggplot(TaskTwoAll, aes(x=rt)) +
 geom_histogram(binwidth = 1)+
 geom_vline(aes(xintercept=mean(rt)), color="blue", linetype="dashed", size=1)+
+   xlab("Reaction time [ms]") + ylab("Frequency") +
 theme_apa()
 ggsave("histogram_rt_original.png", width = 16, height = 9, units = "in")
 
 
 
-# now WITH filtering
+# now WITH filtering (firstly the insufficient accuracy in task1, MAD outliers, <200 >1790)
 #first person
 (ParticipantN =1)
 jatosFile <- paste(fileFolder,files[ParticipantN], sep = "")
@@ -189,21 +196,19 @@ sum(is.na(Task2$rt))
 cleanRT <- outliersMAD(Task2[1:320,1],  MADCutOff = 2.5, replaceOutliersWith = NA,
                        showMADValues = FALSE, outlierIndices = FALSE, bConstant = 1.4826, digits = 2)
 
-
 Task2new <- cbind(Task2, rt_clean = cleanRT) 
 Task2 <- Task2new
-
 
 
 task1.1 <-  Task1
 task2.1 <-  Task2
 
-#makind a frame for all
+# a frame for all
 
 TaskOneAll <- task1.1
 TaskTwoAll <- task2.1
 
-#nowthe loop to add the rest --- 
+#now the loop to add the rest --- 
 
 for (ParticipantN in 2:40){
    jatosFile <- paste(fileFolder,files[ParticipantN], sep = "")
@@ -245,7 +250,7 @@ TaskTwoAll <- rbind(TaskTwoAll, Task2)
 
 
 
-#FOR PLOTTING INDIVIDUAL TASK PERFORMANCE
+#FOR PLOTTING INDIVIDUAL TASK PERFORMANCE for all participants with the unfiltered
 
 (ParticipantN = 40)
    jatosFile <- paste(fileFolder,files[ParticipantN], sep = "")
@@ -296,7 +301,7 @@ ggsave("TaskTwo40.png", width = 16, height = 9, units = "in")
 
 
 #######
-
+# NOW MORE FILTERING ON THE FILTERED DATA: INSUFFICIENT ACCURACY TASK2 AND BLOCKWISE ACCURACY
 TaskTwoAll <- na.omit(TaskTwoAll) 
 
 TaskTwoAll <- TaskTwoAll %>% 
@@ -315,7 +320,7 @@ sum(is.na(TaskTwoAll$blockCount))
 #then divide by 40
 
 
-# deleting trials (rows) tht have NA in them
+# deleting trials (rows) that have NA in them
 
 TaskTwoAllnew <- na.omit(TaskTwoAll) 
 
@@ -324,18 +329,28 @@ TaskTwoAllnew <- na.omit(TaskTwoAll)
 ggplot(TaskTwoAllnew, aes(x=rt_clean)) +
    geom_histogram(binwidth = 1)+
    geom_vline(aes(xintercept=mean(rt)), color="blue", linetype="dashed", size=1)+
+   xlab("Reaction time [ms]") + ylab("Frequency") +
    theme_apa()
 ggsave("histogram_rt_filtered.png", width = 16, height = 9, units = "in")
 
+#boxplot
+
+ggplot(TaskTwoAllnew, aes(x=valueCondition, y=rt, fill=valueCondition)) + 
+   geom_boxplot(alpha=0.3) +
+   stat_boxplot(geom="errorbar", width=0.3) +
+   geom_point(size = 0.1) + 
+   xlab("Condition") + ylab("Reaction times [ms]") +
+   ylim(100, 1800) +
+   theme_apa() +
+   theme(legend.position="none") +
+   scale_fill_brewer(palette="BuPu")
+ggsave("boxplot_rt_filtered.png", width = 16, height = 9, units = "in")
 
 
-
-
-TaskTwoAllnew$Age <- as.integer(TaskTwoAllnew$Age)
-
+#descriptive data (without practice block) RT
 descriptivesrt <- TaskTwoAllnew %>% group_by(valueCondition) %>%
   filter(correct>0)%>%
-#  filter(blockCount<2)%>%
+  filter(blockCount>0)%>%
    summarize(
       Mean = mean(rt_clean)
       , Median = median(rt_clean)
@@ -345,6 +360,7 @@ descriptivesrt <- TaskTwoAllnew %>% group_by(valueCondition) %>%
    )
 descriptivesrt[, -1] <- printnum(descriptivesrt[, -1])
 
+#only the practice block RT
 descriptivesrt2 <- TaskTwoAllnew %>% group_by(valueCondition) %>%
      filter(correct>0)%>%
      filter(blockCount<1)%>%
@@ -357,11 +373,9 @@ descriptivesrt2 <- TaskTwoAllnew %>% group_by(valueCondition) %>%
    )
 descriptivesrt2[, -1] <- printnum(descriptivesrt2[, -1])
 
-apa.table(descriptives, caption = "Descriptive statistics of reaction time by Value Condition.", note = "some notes", escape = TRUE)
-
-
+# without practice block accuracy
 descriptivesacc <- TaskTwoAllnew %>% group_by(valueCondition) %>%
-   #filter(blockCount<2)%>%
+   filter(blockCount>0)%>%
    summarize(
       Mean = mean(correct)
       , Median = median(correct)
@@ -371,9 +385,9 @@ descriptivesacc <- TaskTwoAllnew %>% group_by(valueCondition) %>%
    )
 descriptivesacc[, -1] <- printnum(descriptivesacc[, -1])
 
+#only practice block accuracy
 descriptivesacc2 <- TaskTwoAllnew %>% group_by(valueCondition) %>%
-
-  filter(blockCount<1)%>%
+ filter(blockCount<1)%>%
    summarize(
       Mean = mean(correct)
       , Median = median(correct)
@@ -382,34 +396,6 @@ descriptivesacc2 <- TaskTwoAllnew %>% group_by(valueCondition) %>%
       , Max = max(correct)
    )
 descriptivesacc2[, -1] <- printnum(descriptivesacc2[, -1])
-
-
-#jusst looking
-meanRTbyCondTask1 <- TaskOneAll%>%
-  group_by(valueCondition)%>%
-  summarise(mean = mean(rt))
-view(meanRTbyCondTask1)
-
-meanAccbyCondTask1 <- TaskOneAll%>%
-  group_by(valueCondition)%>%
-  summarise(mean = mean(correct))
-view(meanAccbyCondTask1)
-
-meanRTbyCondTask2 <- TaskTwoAllnew%>%
-  group_by(valueCondition)%>%
-  summarise(mean = mean(rt_clean))
-view(meanRTbyCondTask2)
-
-meanAccbyCondTask2 <- TaskTwoAllnew%>%
-  group_by(valueCondition)%>%
-  summarise(mean = mean(correct))
-view(meanAccbyCondTask2)
-
-#meanaccblockwise <- TaskTwoAll%>%
-#  group_by(PID, blockCount)%>%
-#  summarise(mean = mean(correct))
-#view(meanaccblockwise)
-
 
 
 
@@ -424,9 +410,10 @@ view(TaskTwoAllnewRT)
 TaskTwoAllnewRT1 <- replace_with_na_at(TaskTwoAllnew, "blockCount", ~.x < 1)
 TaskTwoAllnewRT1 <- na.omit(TaskTwoAllnewRT) 
 
-
+#for accuracy leaving out practice block
 TaskTwoAllnew1 <- replace_with_na_at(TaskTwoAllnew, "blockCount", ~.x < 1)
-TaskTwoAllnew1 <- na.omit(TaskTwoAllnewRT) 
+TaskTwoAllnew1 <- na.omit(TaskTwoAllnew1) 
+
 #testing normality assumption (shapiro wil test) its violated but thts not so bad...?
 TaskTwoAllnewRT%>%
    filter(correct>0)%>%
@@ -450,58 +437,15 @@ anovazeugrt$valueCondition <- factor(anovazeugrt$valueCondition)
 anovart<- aov(rt_clean ~ valueCondition+Error(PID/valueCondition), data=anovazeugrt)
 summary(anovart)
 
+
+
 #FOR APATABLE
 
 options(contrasts = c("contr.helmert", "contr.poly"))
 output <- aov(rt_clean~valueCondition, data = TaskTwoAllnewRT1)
 apa.aov.table(output, filename = "anova_tableRT.doc")
 
-#only first 2 bocks anova (not sig as well but... more....)
-
-TaskTwoAllnewRT2 <- replace_with_na_at(TaskTwoAllnewRT, "blockCount", ~.x > 1)
-TaskTwoAllnewRT2 <- na.omit(TaskTwoAllnewRT2) 
-
-anovazeugrt2 <- aggregate(rt_clean ~ PID + valueCondition,
-                            data = TaskTwoAllnewRT2,
-                            FUN = mean)
-
-
-anovazeugrt2$PID <- factor(anovazeugrt2$PID)
-anovazeugrt2$valueCondition <- factor(anovazeugrt2$valueCondition)
-
-anovart2<- aov(rt_clean ~ valueCondition+Error(PID/valueCondition), data=anovazeugrt2)
-summary(anovart2)
-
-
-#testwith only first 2 blocka
-#anovazeugrtfb <- aggregate(rt_clean ~ PID + valueCondition,
- #                        data = TaskTwoAllnewRTfb,
-  #                       FUN = mean)
-
-
-#anovazeugrtfb$PID <- factor(anovazeugrtfb$PID)
-#anovazeugrtfb$valueCondition <- factor(anovazeugrtfb$valueCondition)
-
-
-#anovartfb<- aov(rt_clean ~ valueCondition+Error(PID/valueCondition), data=anovazeugrtfb)
-#summary(anovartfb)
-
-
-#test iwthout any filtering 
-#anovaunfiltered <- aggregate(rt ~ PID + valueCondition,
-  #                         data = TaskTwoAll,
-  #                         FUN = mean)
-
-
-#anovazeuggunfiltered$PID <- factor(anovaunfiltered$PID)
-#anovaunfiltered$valueCondition <- factor(anovaunfiltered$valueCondition)
-
-
-#anovaunf<- aov(rt ~ valueCondition+Error(PID/valueCondition), data=anovaunfiltered)
-#summary(anovaunf)
-
-
-#accurac anova
+#accuracy anova
 
 
 anovazeugacc <- aggregate(correct ~ PID + valueCondition,
@@ -518,72 +462,24 @@ anovazeugacc$valueCondition <- factor(anovazeugacc$valueCondition)
 anovaacc <- aov(correct~valueCondition+Error(PID/valueCondition), data=anovazeugacc)
 summary(anovaacc)
 
-# table doesn not work 
+# table doesnt not work 
 options(contrasts = c("contr.helmert", "contr.poly"))
-output <- aov(correct~valueCondition, data = TaskTwoAllnewRT)
+output <- aov(correct~valueCondition, data = TaskTwoAllnew1)
 apa.aov.table(output, filename = "anova_tableacc.doc")
 
 
+##ggplottt 
 
-TaskTwoAllnewacc2 <- replace_with_na_at(TaskTwoAllnew, "blockCount", ~.x > 1)
-TaskTwoAllnewacc2 <- na.omit(TaskTwoAllnewacc2) 
-
-anovazeugacc2 <- aggregate(correct ~ PID + valueCondition,
-                          data = TaskTwoAllnewacc2,
-                          FUN = mean)
-
-
-anovazeugacc2$PID <- factor(anovazeugacc2$PID)
-anovazeugacc2$valueCondition <- factor(anovazeugacc2$valueCondition)
-
-
-anovaacc2 <- aov(correct~valueCondition+Error(PID/valueCondition), data=anovazeugacc2)
-summary(anovaacc2)
-
-
-
-#visualziation for anova rt 
-
-mns <- tapply(anovazeugrt$rt_clean,
-              list(anovazeugrt$valueCondition), mean)
-ses <- tapply(anovazeugrt$rt_clean,
-              list(anovazeugrt$valueCondition), sd)/
-  sqrt(tapply(anovazeugrt$rt_clean,
-              list(anovazeugrt$valueCondition), length))
-bar <- barplot(mns, beside = TRUE, xpd = FALSE, ylim = c(250, 420),
-               xlim = c(0, 5), xlab="Value condition", ylab="Reaction time [ms]", width = 0.75, col = c("rosybrown3"))
-arrows(bar, mns + 1.96 * ses,
-       bar, mns - 1.96 * ses,
-       angle = 90, code = 3, length = 0.2) 
-
-#legend("top", legend = c("RT in ms"),
-#       col = c("skyblue"), pch = 16)
-
-    
-
-#only firs 2blocks
-mns <- tapply(anovazeugrt2$rt_clean,
-              list(anovazeugrt2$valueCondition), mean)
-ses <- tapply(anovazeugrt2$rt_clean,
-              list(anovazeugrt2$valueCondition), sd)/
-   sqrt(tapply(anovazeugrt2$rt_clean,
-               list(anovazeugrt2$valueCondition), length))
-bar <- barplot(mns, beside = TRUE, xpd = FALSE, ylim = c(250, 420),
-               xlim = c(0, 5), xlab="Value condition", ylab="Reaction time [ms]", width = 0.75, col = c("rosybrown3"))
-arrows(bar, mns + 1.96 * ses,
-       bar, mns - 1.96 * ses,
-       angle = 90, code = 3, length = 0.2)
-
-##ggplottt
-
-ggplot(anovazeugrt, aes(x = valueCondition, y = rt_clean)) +
+ggplot(anovazeugrt, aes(x = valueCondition, y = rt_clean, fill = valueCondition)) +
    geom_boxplot() +
-   stat_boxplot(geom="errorbar", width=0.2) +
-   geom_point(aes(colour = factor(valueCondition), size = 0.5)) + 
+   stat_boxplot(geom="errorbar", width=0.3) +
+   geom_point(aes(shape=".")) + 
+   scale_fill_manual(values=c("lightsalmon2", "plum2", "palegreen3", "turquoise2", "Grey")) +
    xlab("Value condition") + ylab("Reaction time [ms]") +
    ylim(220, 470) +
    theme_apa()
 ggsave("anovartall.png", width = 16, height = 9, units = "in")
+
 
 
 ggplot(anovazeugrt2, aes(x = valueCondition, y = rt_clean)) +
@@ -597,57 +493,15 @@ ggsave("anovartfirstblocks.png", width = 16, height = 9, units = "in")
 
   
 
-#visualtzation for anova acuracy D
-
-mns <- tapply(anovazeugacc$correct,
-              list(anovazeugacc$valueCondition), mean)
-ses <- tapply(anovazeugacc$correct,
-              list(anovazeugacc$valueCondition), sd)/
-  sqrt(tapply(anovazeugacc$correct,
-              list(anovazeugacc$valueCondition), length))
-bar <- barplot(mns, beside = TRUE, xpd = FALSE, ylim = c(0.8, 1),
-               xlim = c(0, 5), xlab="Value condition", ylab="Accuracy", width = 0.75, col = c("wheat3"))
-arrows(bar, mns + 1.96 * ses, 
-       bar, mns - 1.96 * ses,
-       angle = 90, code = 3)
-#legend("top", legend = c("accuracy"),
- #      col = c("wheat3"), pch = 16)
-
-
-#only first2
-mns <- tapply(anovazeugacc2$correct,
-              list(anovazeugacc2$valueCondition), mean)
-ses <- tapply(anovazeugacc2$correct,
-              list(anovazeugacc2$valueCondition), sd)/
-   sqrt(tapply(anovazeugacc2$correct,
-               list(anovazeugacc2$valueCondition), length))
-bar <- barplot(mns, beside = TRUE, xpd = FALSE, ylim = c(0.7, 1),
-               xlim = c(0, 5), xlab="Value condition", ylab="Accuracy", width = 0.75, col = c("wheat3"))
-arrows(bar, mns + 1.96 * ses, 
-       bar, mns - 1.96 * ses,
-       angle = 90, code = 3)
-
-
-
-
-ggplot(anovazeugacc, aes(x = valueCondition, y = correct)) +
+ggplot(anovazeugacc, aes(x = valueCondition, y = correct, fill = valueCondition)) +
    geom_boxplot() +
-   stat_boxplot(geom="errorbar", width=0.2) +
-   geom_point(aes(colour = factor(valueCondition), size = 0.5)) + 
+   stat_boxplot(geom="errorbar", width=0.3) +
+   geom_point(aes(shape=".")) + 
+   scale_fill_manual(values=c("lightsalmon2", "plum2", "palegreen3", "turquoise2", "Grey")) +
    xlab("Value condition") + ylab("Accuracy") +
    ylim(0.6, 1) +
    theme_apa()
-ggsave("anovaaccallblocks.png", width = 16, height = 9, units = "in")
-
-
-ggplot(anovazeugacc2, aes(x = valueCondition, y = correct)) +
-   geom_boxplot() +
-   stat_boxplot(geom="errorbar", width=0.2) +
-   geom_point(aes(colour = factor(valueCondition), size = 0.5)) + 
-   xlab("Value condition") + ylab("Accuracy") +
-   ylim(0.6, 1) +
-   theme_apa()
-ggsave("anovaaccfirst blocks.png", width = 16, height = 9, units = "in")
+ggsave("anovaaccuracy.png", width = 16, height = 9, units = "in")
 
 
 
@@ -655,10 +509,9 @@ ggsave("anovaaccfirst blocks.png", width = 16, height = 9, units = "in")
 #testing homogenity of variances,  aggregating, faotrizing and compiuting the two way with blockcount
 
 
-leveneTest(rt_clean ~ valueCondition*blockCount, data = anovazeugrt)
+leveneTest(rt_clean ~ valueCondition*blockCount, data = anovazeugrtblocks)
 
 
-# model is singular???? ok i do not put the between factor  in the error term
 anovazeugrtblocks <- aggregate(rt_clean ~ PID + valueCondition + blockCount,
                          data = TaskTwoAllnewRT,
                          FUN = mean)
@@ -745,14 +598,55 @@ output <- aov(rt_clean~blockCount, data = TaskTwoAllnewRT)
 apa.aov.table(output, filename = "1wayanovablocks.doc")
 
 
+mns <- tapply(anovazeugrt$rt_clean,
+              list(anovazeugrt$valueCondition), mean)
+ses <- tapply(anovazeugrt$rt_clean,
+              list(anovazeugrt$valueCondition), sd)/
+   sqrt(tapply(anovazeugrt$rt_clean,
+               list(anovazeugrt$valueCondition), length))
+bar <- barplot(mns, beside = TRUE, xpd = FALSE, ylim = c(250, 420),
+               xlim = c(0, 5), xlab="Value condition", ylab="Reaction time [ms]", width = 0.75, col = c("rosybrown3"))
+arrows(bar, mns + 1.96 * ses,
+       bar, mns - 1.96 * ses,
+       angle = 90, code = 3, length = 0.2) 
+
+#1way accuracy for plot
+anovazeugaccblocks1 <- aggregate(correct ~ PID + blockCount,
+                                data = TaskTwoAllnew,
+                                FUN = mean)
+
+anovazeugaccblocks1$PID <- factor(anovazeugaccblocks1$PID)
+anovazeugaccblocks1$blockCount <- factor(anovazeugaccblocks1$blockCount)
+
+anovablocksacc1 <- aov(correct~blockCount+
+                         Error(PID/blockCount),
+                      data=anovazeugaccblocks1)
+summary(anovablocksacc1)
+
+options(contrasts = c("contr.helmert", "contr.poly"))
+output <- aov(correct~blockCount, data = TaskTwoAllnewRT)
+apa.aov.table(output, filename = "1wayanovablockscorr.doc")
+
+#plot
+ggplot(anovazeugaccblocks1, aes(x = blockCount, y = correct)) +
+   geom_boxplot() +
+   stat_boxplot(geom="errorbar", width=0.3) +
+   geom_point(aes(shape=".")) +  
+   xlab("Block Count") + ylab("Accuracy") +
+   ylim(0.6, 1) +
+   theme_apa()
+ggsave("anovaaccblocks.png", width = 12, height = 9, units = "in")
+
+
 ggplot(anovazeugrtblocks1, aes(x = blockCount, y = rt_clean)) +
    geom_boxplot() +
-   stat_boxplot(geom="errorbar", width=0.2) +
-  geom_point(aes(colour = factor(blockCount), size = 4)) + 
+   stat_boxplot(geom="errorbar", width=0.3) +
+   geom_point(aes(shape=".")) + 
    xlab("Block Count") + ylab("Mean RT [ms]") +
    ylim(200, 600) +
    theme_apa()
-ggsave("anovartblocks.png", width = 16, height = 9, units = "in")
+ggsave("anovartblocks.png", width = 12, height = 9, units = "in")
+
 
 #visualization for anovablocks RT
 
@@ -782,14 +676,7 @@ ggsave("anovartblocks.png", width = 16, height = 9, units = "in")
 #   ggplot( aes(x=blockCount, y=rt_clean, group=valueCondition, color=valueCondition)) +  
  #  geom_line()
 
-   # NICHT SOO GUUUUUUT
-#blockplot <- anovazeugrtblocks %>%
-#   ggplot(., aes(x=blockCount, y=rt_clean, group=valueCondition, color=valueCondition)) + 
- #  geom_line() +
- #  ylim(250,450) +
- #  theme_apa()
 
-#print(blockplot)
 
 #was ist das?
 TaskTwoAllnewRT <- TaskTwoAllnewRT %>% 
@@ -866,8 +753,14 @@ anovazeugdistract$PID <- factor(anovazeugdistract$PID)
 anovazeugdistract$valueCondition <- factor(anovazeugdistract$valueCondition)
 anovazeugdistract$Distractability <- factor(anovazeugdistract$Distractability)
 
+
+
+leveneTest(rt_clean ~ valueCondition*Distractability, data = anovazeugdistract)
+
+
+
 anovadistract <- aov(rt_clean~valueCondition*Distractability+
-                      Error(PID),
+                      Error(PID/valueCondition),
                    data=anovazeugdistract)
 summary(anovadistract)
 
@@ -876,21 +769,24 @@ options(contrasts = c("contr.helmert", "contr.poly"))
 output <- aov(rt_clean~valueCondition*Distractability, data = TaskTwoAllnewRT1)
 apa.aov.table(output, filename = "2wayanovadistractability.doc")
 ##############################test
+Task2ttest <-  replace_with_na_at(TaskTwoAllnewRT1, "Distractability", ~.x == "high")
+Task2ttest <- na.omit((Task2ttest))
 
+t.test(Task2ttest$rtCosts, mu= 0, alt= "less")
 
-mns <- tapply(anovazeugdistract$rt_clean,
-              list(anovazeugdistract$valueCondition, anovazeugdistract$Distractability), mean)
-ses <- tapply(anovazeugdistract$rt_clean,
-              list(anovazeugdistract$valueCondition,  anovazeugdistract$Distractability), sd)/
-   sqrt(tapply(anovazeugdistract$rt_clean,
-               list(anovazeugdistract$valueCondition, anovazeugdistract$Distractability), length))
-bar <- barplot(mns, beside = TRUE, xpd = FALSE, ylim = c(250, 450),
-               xlim = c(0, 10), xlab="Distractability [>/< Median RT]", ylab="Reaction time [ms]", width = 0.85, col = c("goldenrod2", "lightsteelblue1", "darksalmon", "yellow4", "gray60"))
-arrows(bar, mns + 1.96 * ses,
-       bar, mns - 1.96 * ses,
-       angle = 90, code = 3, length = 0.15)
-legend("right", legend = c("low loss", "low reward", "neutral", "none", "high reward"),
-       col = c("goldenrod2", "lightsteelblue1", "darksalmon", "yellow4", "gray60" ), pch = 16)
+#mns <- tapply(anovazeugdistract$rt_clean,
+#              list(anovazeugdistract$valueCondition, anovazeugdistract$Distractability), mean)
+#ses <- tapply(anovazeugdistract$rt_clean,
+#              list(anovazeugdistract$valueCondition,  anovazeugdistract$Distractability), sd)/
+ #  sqrt(tapply(anovazeugdistract$rt_clean,
+  #             list(anovazeugdistract$valueCondition, anovazeugdistract$Distractability), length))
+#bar <- barplot(mns, beside = TRUE, xpd = FALSE, ylim = c(250, 450),
+ #              xlim = c(0, 10), xlab="Distractability [>/< Median RT]", ylab="Reaction time [ms]", width = 0.85, col = c("goldenrod2", "lightsteelblue1", "darksalmon", "yellow4", "gray60"))
+#arrows(bar, mns + 1.96 * ses,
+ #      bar, mns - 1.96 * ses,
+  #     angle = 90, code = 3, length = 0.15)
+#legend("right", legend = c("low loss", "low reward", "neutral", "none", "high reward"),
+ #      col = c("goldenrod2", "lightsteelblue1", "darksalmon", "yellow4", "gray60" ), pch = 16)
 #theoretisch noch den in der mitte auslassen
 
 
@@ -935,10 +831,11 @@ TaskTwoAllnewRT1 <- TaskTwoAllnewRT1 %>%
                                 ifelse(valueCondition == "Low", "Low Reward", NA)))
 
 
+TaskTwoAllnewRT1ttest <- na.omit(TaskTwoAllnewRT1)
 
 #hypothesis 3 loss aversion t test
 tdata <- aggregate(rtCosts ~ PID + LossOrReward,
-                    data = TaskTwoAllnewRT1,
+                    data = TaskTwoAllnewRT1ttest,
                     FUN = mean)
 
 
@@ -946,20 +843,39 @@ tdata$PID <- factor(tdata$PID)
 tdata$LossOrReward<- factor(tdata$LossOrReward)
 
 t.test(rtCosts ~ LossOrReward, data = tdata,
-       alternative = "two.sided", paired = T)  #not sure if greater or smth else
+       alternative = "two.sided", paired = T)  
+
+tdata %>%
+   group_by(LossOrReward) %>%
+   get_summary_stats(rtCosts, type = "mean_sd")
+
+mean(tdata$rtCosts)
 
 
+
+
+mns <- tapply(tdata$rtCosts,
+              list(tdata$LossOrReward), mean)
+ses <- tapply(tdata$rtCosts,
+              list(tdata$LossOrReward), sd)/
+   sqrt(tapply(tdata$rtCosts,
+               list(tdata$LossOrReward), length))
+bar <- barplot(mns, beside = TRUE, xpd = FALSE, ylim = c(-10, 10),
+               xlim = c(0, 2), width = 0.75,xlab="Condition", ylab="Distractor costs [ms]", col = c("lightsalmon2", "palegreen3"))
+arrows(bar, mns + 1.96 * ses,
+       bar, mns - 1.96 * ses,
+       angle = 90, code = 3, length = 0.15)
 #plot  
 
 
 ggplot(tdata, aes(x = LossOrReward, y = rtCosts)) +
    geom_boxplot() +
    stat_boxplot(geom="errorbar", width=0.2) +
-   geom_point(aes(colour = factor(LossOrReward))) + 
+   geom_point(aes(colour = factor(LossOrReward), shape = ".")) + 
    xlab("Condition") + ylab("RT costs [ms]") +
    ylim(-10, 10) +
    theme_apa()
-ggsave("rtcoststtest.png", width = 16, height = 9, units = "in")
+ggsave("rtcoststtest.png", width = 10, height = 9, units = "in")
 
 
 #linearity
@@ -974,34 +890,38 @@ TaskTwoAllnewRT1$valuepoints <-as.integer(TaskTwoAllnewRT1$valuepoints)
 TaskTwoAllnewRT1$rt_clean <-as.integer(TaskTwoAllnewRT1$rt_clean)
 #with means?
 
-trendcheck <- aggregate(rt_clean ~ valuepoints,
+trendcheck <- aggregate(rt_clean ~ valuepoints + PID,
                                data = TaskTwoAllnewRT1,
                                FUN = mean)
 
 #linearity teast OK ICH KRIEGE NICHT GEPLOTTET; OBJEKT IS NOT FOUND: 
 
-fit <- lm(valuepoints ~ rt_clean, TaskTwoAllnewRT1)
-summary(fit)
+
 
 fit <- lm(valuepoints ~ log(rt_clean), TaskTwoAllnewRT1)
 summary(fit)
+
+
+
+apa.aov.table(fit, filename = "fittingtable.doc")
 
 #with means
 fit <- lm(valuepoints ~ log(rt_clean), trendcheck)
 summary(fit)
 
-plot(fit, log="", main = "Logarithmic regression (b > 0)") #?????
+#gut
+trend.line(trendcheck$valuepoints, trendcheck$rt_clean, type = "linear", plot = TRUE)
+ggsave("linearityfitting.png",width = 12, height = 9, units = "in")
 
+trend.line(trendcheck$valuepoints, trendcheck$rt_clean, type = "logarithmic", plot = TRUE)
 
-install.packages("plotfunctions")
-library(plotfunctions)
 
 ggplot(aes(x=valuepoints,y=rt_clean),data=trendcheck)+
    geom_point()+
    geom_line()+
    xlab("Condition (in value points)") + ylab(" mean RT [ms]") +
    theme_apa()
-ggsave("linearityplot.png",width = 16, height = 9, units = "in")
+ggsave("linearityplot.png",width = 12, height = 9, units = "in")
 
 ggplot(aes(x=valuepoints,y=rt_clean),data=trendcheck)+
    geom_point()+
@@ -1029,6 +949,7 @@ ggsave("linearity.png",width = 16, height = 9, units = "in")
 #gender anova 
 
 
+
 anovazeuggender <- aggregate(rt_clean ~ PID + valueCondition + Sex,
                                data = TaskTwoAllnewRT1,
                                FUN = mean)
@@ -1042,7 +963,45 @@ anovagender <- aov(rt_clean~valueCondition*Sex+
                      data=anovazeuggender)
 summary(anovagender)
 
+anovagenderone<- aov(rt_clean~Sex,
+                     data=anovazeuggender)
 
+summary(anovagenderone)
+
+
+ezANOVA(
+   TaskTwoAllnewRT1
+   , rt_clean
+   , PID
+   , within = valueCondition
+   , between = Sex
+   , type = 2
+   , white.adjust = FALSE
+   , detailed = TRUE
+   , return_aov = TRUE
+)
+
+install.packages("sjPlot")
+library(sjPlot)
+
+#no post hoc only main effct sex sig?? is it
+
+#apa table
+options(contrasts = c("contr.helmert", "contr.poly"))
+output <- aov(rt_clean~valueCondition*Sex, data = TaskTwoAllnewRT1)
+apa.aov.table(output, filename = "2waygenderrt.doc")
+
+apa.2way.table(
+   Sex,
+   valueCondition,
+   rt_clean,
+   anovazeuggender,
+   filename = "aptablesex2wayrt.doc",
+   table.number = NA,
+   show.conf.interval = FALSE,
+   show.marginal.means = FALSE,
+   landscape = TRUE
+)
 #fürgender noch???
 
 ggplot(tdata, aes(x = LossOrReward, y = Sex)) +
@@ -1069,9 +1028,20 @@ anovagender2 <- aov(rtCosts~LossOrReward*Sex+
                       Error(PID/LossOrReward),
                    data=anovazeuggender2)
 summary(anovagender2)
+# t test female less than zero
+Task2ttestg <-  replace_with_na_at(TaskTwoAllnewRT1, "Sex", ~.x == "Männlich")
+Task2ttestg <- na.omit((Task2ttestg))
+
+t.test(Task2ttestg$rtCosts, mu= 0, alt= "less")
 
 #no need for a ost hoc test
 
+descriptivesgender <- anovazeuggender2 %>% group_by(Sex) %>%
+   
+   summarize(
+      Mean = mean(rtCosts)
+      , SD = sd(rtCosts))
+descriptivesgender[, -1] <- printnum(descriptivesgender[, -1])
 
 Plot2WayANOVA(rtCosts~LossOrReward*Sex,
               dataframe = anovazeuggender2,
@@ -1150,8 +1120,10 @@ Plot2WayANOVA(rtCosts~LossOrReward*Sex,
             
             
             
+            
+            
             options(contrasts = c("contr.helmert", "contr.poly"))
-            output <- aov(rtCosts~ PID + valueCondition + Distractability, data = TaskTwoAllnewRT1)
+            output <- aov(rtCosts~ PID + LossOrReward*Distractability, data = TaskTwoAllnewRT1)
             apa.aov.table(output, filename = "anova_distract_costs2.doc")
             
             
@@ -1196,8 +1168,11 @@ Plot2WayANOVA(rtCosts~LossOrReward*Distractability,
                show.marginal.means = FALSE,
                landscape = TRUE)
  
-
+            writeClipboard(as.character(pwc))
+            writeClipboard(as.character(pwc), format = 1)
 writeClipboard(as.character(descriptivesrtgender))
 writeClipboard(as.character(descriptivesrt))
 writeClipboard(as.character(descriptivesacc))
 writeClipboard(as.character(descriptivesrt2))
+
+ggcorrplot(corr, hc.order = TRUE, type = "lower", lab = TRUE, lab_size = 3, method="circle", colors = c("blue", "white", "red"), outline.color = "gray", show.legend = TRUE, show.diag = FALSE, title="Correlogram of loan variables")
